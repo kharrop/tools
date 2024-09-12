@@ -8,6 +8,7 @@ import {
   BindingLike,
   DataModelOptions,
   resolveDataRefs,
+  findNextExp,
 } from "@player-ui/player";
 import {
   getProperty,
@@ -75,7 +76,7 @@ export class ComplexityCheck implements PlayerLanguageServicePlugin {
           this.contentScore < this.config.maxWarningLevel
         ) {
           diagnostic = {
-            message: `Warning: Content complexity is ${this.contentScore}`,
+            message: `Warning: Content complexity is ${this.contentScore}, which is above your warning threshold of ${this.config.maxWarningLevel}`,
             severity: DiagnosticSeverity.Warning,
             range: makeRange(
               this.range.start,
@@ -85,7 +86,7 @@ export class ComplexityCheck implements PlayerLanguageServicePlugin {
           };
         } else {
           diagnostic = {
-            message: `Error: Content complexity is ${this.contentScore}`,
+            message: `Error: Content complexity is ${this.contentScore}, however the maximum acceptable complexity is ${this.config.maxAcceptableComplexity}`,
             severity: DiagnosticSeverity.Error,
             range: makeRange(
               this.range.start,
@@ -120,12 +121,17 @@ export class ComplexityCheck implements PlayerLanguageServicePlugin {
       },
 
       FlowStateNode: (flowState) => {
-        // add complexity per expression that needs to run
+        // add complexity per expression in a state
         if (flowState.stateType) {
           if (flowState.stateType.valueNode?.value === "ACTION") {
             const numExp = getProperty(flowState, "exp");
             if (numExp?.valueNode?.type === "array") {
               this.contentScore += numExp.valueNode.children.length;
+              console.log(
+                "state exp",
+                numExp.valueNode.children.length,
+                this.contentScore
+              );
             } else {
               this.contentScore += 1;
             }
@@ -134,32 +140,36 @@ export class ComplexityCheck implements PlayerLanguageServicePlugin {
       },
       AssetNode: (assetNode) => {
         // add complexity for every asset
+
         this.contentScore += 1;
+        console.log("assetNode", this.contentScore);
       },
       ViewNode: (assetNode) => {
         // Add complexity per view
+
         this.contentScore += 1;
+        console.log("viewNode", this.contentScore);
       },
       StringNode: (stringNode) => {
         const stringContent = stringNode.value;
-        // TODO handle nested binding/expressions
         resolveDataRefs(stringContent, {
           model: {
-            get: () => {
+            get: (binding) => {
               this.contentScore += 2;
-              return "";
+              console.log("model - get", binding, this.contentScore);
+              return binding;
             },
-            set: (
-              transaction: [BindingLike, any][],
-              options?: DataModelOptions | undefined
-            ) => {
+            set: () => {
               this.contentScore += 2;
+              console.log("model - set", this.contentScore);
               return [];
             },
             delete: () => {},
           },
-          evaluate: () => {
+          evaluate: (str) => {
             this.contentScore += 2;
+            console.log("model - evaluate", str, this.contentScore);
+            return str;
           },
         });
       },
