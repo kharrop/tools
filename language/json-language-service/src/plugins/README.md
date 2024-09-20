@@ -10,6 +10,8 @@ Each plugin has an associated test that runs through mock content. To run these 
 
 ## Plugins
 
+The runtime is a script injected into the page that's responsible for attaching to any running player instances. It injects a global __Player_Devtools plugin that's used to send events to and from the content script (and thus the rest of the ecosystem).
+
 ### Complexity check
 
 This plugin runs through content and calculates a complexity score to help teams understand how their content contributes to the potential performance impact in product.
@@ -18,18 +20,11 @@ Teams can set a `maxWarningLevel` that triggers a warning, as well as a `maxAcce
 
 A scoring breakdown of what this plugin looks for:
 
-| Criteria                      | Points |
-|-------------------------------|--------|
-| Exp  in ACTION states (array) | 1      |
-| View node                     | 1      |
-| Asset node                    | 1      |
-| Evaluation (@[]@)             | 2      |
-| Expression ({{ }})            | 2      |
-
-ASK KETAN:
-
-- data set? - not seeing it being used, am I doing this right?
-- evaulate only seems to run when there are monkey ears?
-- is the nested binding calculations correct (add 2?)
-- is there an example of a template I can look at to add as a test?
-- views[] vs state_type (get errors when passing in another view?)
+| Criteria                      | Points            |
+|-------------------------------|-------------------|
+| Exp in ACTION states (array)  | 1                 |
+| View node                     | 1                 |
+| Asset node                    | 1                 |
+| Asset node in a template      | 2 (+1 per nested) |
+| Evaluation (@[]@)             | 2                 |
+| Expression ({{ }})            | 2                 |

@@ -189,4 +189,96 @@ describe("complexity plugin", () => {
       ]
     `);
   });
+
+  test("Measures complexity for templates", async () => {
+    const textDocument = toTextDocument(
+      JSON.stringify({
+        id: "test",
+        views: [
+          {
+            id: "yes",
+            type: "info",
+            title: {
+              asset: {
+                id: "info-title",
+                type: "text",
+                value: "{{some.text}}",
+              },
+            },
+            template: [
+              {
+                data: "foo.pets",
+                output: "values",
+                value: {
+                  asset: {
+                    type: "collection",
+                    id: "outer-collection-_index_",
+                    template: [
+                      {
+                        data: "foo.people",
+                        output: "values",
+                        value: {
+                          asset: {
+                            id: "info-title-2",
+                            type: "text",
+                            value: "{{foo.people._index_}}",
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+            data: {
+              foo: [1, 2],
+            },
+          },
+        ],
+        navigation: {
+          BEGIN: "FLOW_1",
+          FLOW_1: {
+            startState: "ACTION_1",
+            ACTION_1: {
+              state_type: "ACTION",
+              exp: ["something"],
+              transitions: {
+                "*": "VIEW_1",
+              },
+            },
+            VIEW_1: {
+              state_type: "VIEW",
+              ref: "yes",
+              transitions: {
+                "*": "ACTION_2",
+              },
+            },
+            ACTION_2: {
+              state_type: "ACTION",
+              exp: ["{{somethingElse}} = 1", "something else"],
+              transitions: {
+                "*": "VIEW_1",
+              },
+            },
+          },
+        },
+      })
+    );
+
+    const validations = await service.validateTextDocument(textDocument);
+    expect(validations).toHaveLength(1);
+    /**
+     * Score break down
+     * 1 x for each view node (1 total) = 1
+     * 1 x from exps in ACTION states (3 total) = 3
+     * 1 x for each asset node (2 total) = 2
+     * 2 x for each expression (`2 total) = 4
+     * 2 x for each data evaluated (1 total) = 2
+     */
+    expect(validations?.map((v) => v.message)).toMatchInlineSnapshot(`
+      [
+        "Error: Content complexity is 12",
+      ]
+    `);
+  });
 });
